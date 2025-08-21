@@ -106,6 +106,46 @@ class SimpleHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({"error": "Пользователь не найден"}).encode())
 
+    def add_product(self, product_name, price):
+        """Добавление нового продукта в базу данных."""
+        if not product_name or price < 0:
+            self.send_response(400)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "Неверные данные продукта"}).encode())
+            return
+
+        users.add_product(product_name, price)
+        self.send_response(202)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({"message": f"Продукт {product_name} добавлен"}).encode())
+
+    def buy_product(self, username, product_name):
+        """Покупка продукта пользователем."""
+        if not username or not product_name:
+            self.send_response(400)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "Неверные данные пользователя или продукта"}).encode())
+            return
+
+        user = users.get_user(username)
+        if not user:
+            self.send_response(404)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"error": "Пользователь не найден"}).encode())
+            return
+
+        # Логика покупки продукта
+        # ...
+
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({"message": f"Пользователь {username} купил продукт {product_name}"}).encode())
+
 # Запуск сервера
 server = HTTPServer(("localhost", 8000), SimpleHandler)
 print("Сервер запущен: http://localhost:8000/")

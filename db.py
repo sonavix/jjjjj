@@ -76,3 +76,41 @@ class Db:
             print(f"User {username} deleted successfully.")
         except psycopg2.Error as e:
             print(f"Error deleting user: {e}")
+        
+    def add_product_at_list(self, product_name, price, username):
+        """Add a product to the username's products list in the database."""
+        if self.conn is None:
+            print("No database connection.")
+            return
+        try:
+            cur = self.conn.cursor()
+            cur.execute("INSERT INTO products (product_name, price, username) VALUES (%s, %s, %s)", (product_name, price, username))
+            self.conn.commit()
+            cur.close()
+            print(f"Product {product_name} added successfully for user {username}.")
+        except psycopg2.Error as e:
+            print(f"Error adding product: {e}")
+
+
+    def buy_product(self, username, product_id, product_list):
+        """Process a purchase of a product by a user from product list."""
+        if self.conn is None:
+            print("No database connection.")
+            return
+        try:
+            cur = self.conn.cursor()
+            cur.execute("SELECT price FROM products WHERE id = %s AND username = %s", (product_id, username))
+            product = cur.fetchone()
+            if product:
+                price = product[0]
+                cur.execute("UPDATE user_balances SET balance = balance - %s WHERE username = %s", (price, username))
+                self.conn.commit()
+                print(f"Product {product_id} purchased successfully by {username}.")
+            else:
+                print(f"Product {product_id} not found for user {username}.")
+            cur.close()
+        except psycopg2.Error as e:
+            print(f"Error processing purchase: {e}")
+
+
+            
