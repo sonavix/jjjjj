@@ -106,6 +106,18 @@ class Db:
         except psycopg2.Error as e:
             print(f"Error buying product: {e}")
      
-
+    def delete_product(self, product_name):
+        """Delete a product from the database by product_name."""
+        if self.conn is None:
+            print("No database connection.")
+            return
+        try:
+            cur = self.conn.cursor()
+            cur.execute("DELETE FROM products WHERE product_name = %s", (product_name,))
+            self.conn.commit()
+            cur.close()
+            print(f"Product {product_name} deleted successfully.")
+        except psycopg2.Error as e:
+            print(f"Error deleting product: {e}")
 
             

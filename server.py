@@ -131,22 +131,45 @@ class SimpleHandler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"error": "Неправильный путь. Используйте /username"}).encode())
             return
 
-        username = path_parts[0]
+        command = path_parts[0]
+        stuff = path_parts[1]
         global db
 
-        # Проверка: существует ли пользователь
-        user = db.delete_user(username)
-        if user:
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps({"message": f"Пользователь {username} удален"}).encode())
+        if command == "user":
+            user = db.delete_user(stuff)
+            if user:
+                self.send_response(200)
+                self.send_header("Content-type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"message": f"Пользователь {stuff} удален"}).encode())
+            else:
+
+                self.send_response(404)
+                self.send_header("Content-type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "Пользователь не найден"}).encode())
+        if command == "product":
+            product = db.delete_product(stuff)
+            if product:
+                self.send_response(200)
+                self.send_header("Content-type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"message": f"Продукт {stuff} удален"}).encode())
+            else:
+
+                self.send_response(404)
+                self.send_header("Content-type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": "Продукт не найден"}).encode())
         else:
 
-            self.send_response(404)
+            self.send_response(400)
             self.send_header("Content-type", "application/json")
             self.end_headers()
-            self.wfile.write(json.dumps({"error": "Пользователь не найден"}).encode())
+            self.wfile.write(json.dumps({"error": "Неправильный путь. Используйте /user/username или /product/productname"}).encode())
+
+
+
 """
     def add_product(self, product_name, price):
        
