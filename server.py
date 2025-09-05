@@ -46,16 +46,29 @@ class SimpleHandler(BaseHTTPRequestHandler):
                     price = data.get("price", 0)
                     if not product_name or price < 0:
                         raise ValueError("wrong product data")
-                    self.add_product(product_name, price)
+                    db.add_product(product_name, price)
                     return
                 case "buy":
-                    username = data.get("username")
-                    product_name = data.get("product_name")
-                    if not username or not product_name:
+                    user_id = data.get("username")
+                    product_id = data.get("product")
+                    if not user_id or not product_id:
                         raise ValueError("wrong buy data")
-                    self.buy_product(username, product_name)
-                    return
-                
+                    db.buy_product(user_id, product_id)
+                    response = {
+                        "message": f"User {user_id} bought product {product_id}"
+                    }
+                    
+                    
+                case 'cart':
+                    user_id = data.get("username")
+                    product_id = data.get("product")
+                    if not user_id or not product_id:
+                        raise ValueError("wrong cart data")
+                    db.add_product_to_shopping(user_id, product_id)
+                    response = {
+                        "message": f"Products {product_id} added to shopping list for user {user_id}"
+                    }
+
                 case _: # The wildcard or default case
                     raise ValueError("Неправильный путь. Используйте /user, /product или /buy")
                 
@@ -76,41 +89,41 @@ class SimpleHandler(BaseHTTPRequestHandler):
 
     # Метод GET — получить пользователя по имени и балансу
     def do_GET(self):
+
         parsed_url = urlparse(self.path)
         path_parts = parsed_url.path.strip("/").split("/")
+        path1 = path_parts[0] if len(path_parts) > 0 else None
+        path2 = path_parts[1] if len(path_parts) > 1 else None
+    
 
-        username = path_parts[0] if len(path_parts) > 0 else None
-        stuff = path_parts[1] if len(path_parts) > 1 else None
-
-
-        if not username:
+        if not path1:
             self.send_response(400)
             self.send_header("Content-type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps({"error": "Username is missing"}).encode())
             return
 
-        user = db.get_user(username)
-        if username == "user":
-            if stuff == user:
+        
+        if path1 == "user":
+            user = db.get_user(path2)
+            if path2 == user:
                 self.send_response(200)
                 self.send_header("Content-type", "application/json")
                 self.end_headers()
                 self.wfile.write(json.dumps(user).encode())
         
-        if username == "buy":
+
+        if path1 == "product":
+            product = db.get_product(path2)
             self.send_response(200)
             self.send_header("Content-type", "application/json")
             self.end_headers()
-            self.wfile.write(json.dumps(user).encode())
+            self.wfile.write(json.dumps(product).encode())
 
-        if username == "product":
-            self.send_response(200)
-            self.send_header("Content-type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(user).encode())
 
-        
+            
+
+ 
         
         else:
 
@@ -124,7 +137,7 @@ class SimpleHandler(BaseHTTPRequestHandler):
         parsed_url = urlparse(self.path)
         path_parts = parsed_url.path.strip("/").split("/")
 
-        if len(path_parts) != 1:
+        if len(path_parts) != 2:
             self.send_response(400)
             self.send_header("Content-type", "application/json")
             self.end_headers()
@@ -149,21 +162,16 @@ class SimpleHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"error": "Пользователь не найден"}).encode())
         if command == "product":
-            product = db.delete_product(stuff)
-            if product:
-                self.send_response(200)
-                self.send_header("Content-type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps({"message": f"Продукт {stuff} удален"}).encode())
-            else:
-
-                self.send_response(404)
-                self.send_header("Content-type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps({"error": "Продукт не найден"}).encode())
+            db.delete_product(stuff)
+            
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"message": f"Продукт {stuff} удален"}).encode())
+    
         else:
 
-            self.send_response(400)
+            self.send_response(404)
             self.send_header("Content-type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps({"error": "Неправильный путь. Используйте /user/username или /product/productname"}).encode())

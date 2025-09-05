@@ -77,7 +77,7 @@ class Db:
         except psycopg2.Error as e:
             print(f"Error deleting user: {e}")
         
-    def add_product_at_list(self, product_name, price):
+    def add_product(self, product_name, price):
         """Add a product to list in the database."""
         if self.conn is None:
             print("No database connection.")
@@ -91,26 +91,99 @@ class Db:
         except psycopg2.Error as e:
             print(f"Error adding product: {e}")
 
-
-    def buy_product(self, user_balances_id:int, product_id:int):
-        """Buy a product from list in the database."""
+    def get_product(self, product_name):
+        """Retrieve a product from the database by product_name."""
+        if self.conn is None:
+            print("No database connection.")
+            return None
+        try:
+            cur = self.conn.cursor()
+            cur.execute("SELECT product_name, price FROM products WHERE product_name = %s", (product_name,))
+            product = cur.fetchone()
+            cur.close()
+            if product:
+                return {"product_name": product[0], "price": product[1]}
+            else:
+                print(f"Product {product_name} not found.")
+                return None
+        except psycopg2.Error as e:
+            print(f"Error retrieving product: {e}")
+            return None
+    def add_product_to_shopping(self, username, product):
+        """Add a product to shopping list in the database."""
         if self.conn is None:
             print("No database connection.")
             return
         try:
             cur = self.conn.cursor()
-            cur.execute("INSERT INTO shoppings (user_balances_id, product_id) VALUES (%s, %s)", (user_balances_id, product_id))
+            cur.execute("SELECT id FROM user_balances WHERE username = %s", (username,))
+            user = cur.fetchone()
+            if not user:
+                print(f"User {username} not found.")
+                cur.close()
+                return
+            user_id = user[0]
+            cur.execute("SELECT id FROM products WHERE product_name = %s", (product,))
+            prod = cur.fetchone()
+            if not prod:
+                print(f"Product {product} not found.")
+                cur.close()
+                return
+            product_id = prod[0]
+            cur.execute("INSERT INTO shoppings (user_id, product_id) VALUES (%s, %s)", (user_id, product_id))
             self.conn.commit()
             cur.close()
-            print(f"Product with id {product_id} bought successfully by user with id {user_balances_id}.")
+            print(f"Product {product} added to shopping list for user {username}.")
         except psycopg2.Error as e:
-            print(f"Error buying product: {e}")
+            print(f"Error adding product to shopping list: {e}")
+ 
+    def buy_product(self, user_id, product_id):
+        """Buy a product for a user, deducting the price from their balance."""
+        if self.conn is None:
+            print("No database connection.")
+            return
+        try:
+            cur = self.conn.cursor()
+            # Get user balance
+            cur.execute("SELECT balance FROM user_balances WHERE id = %s", (user_id,))
+            user = cur.fetchone()
+            if not user:
+                print(f"User with ID {user_id} not found.")
+                cur.close()
+                return
+            balance = user[0]
+            # Get product price
+            cur.execute("SELECT price FROM products WHERE id = %s", (product_id,))
+            product = cur.fetchone()
+            if not product:
+                print(f"Product with ID {product_id} not found.")
+                cur.close()
+                return
+            price = product[0]
+            # Check if user has enough balance
+            if balance < price:
+                print(f"User with ID {user_id} has insufficient balance.")
+                cur.close()
+                return
+            # Deduct price from user balance
+            new_balance = balance - price
+            cur.execute("UPDATE user_balances SET balance = %s WHERE id = %s", (new_balance, user_id))
+            # Remove product from shopping list
+            cur.execute("DELETE FROM shoppings WHERE user_id = %s AND product_id = %s", (user_id, product_id))
+            self.conn.commit()
+            cur.close()
+            print(f"User with ID {user_id} bought product with ID {product_id}. New balance: {new_balance}.")
+        except psycopg2.Error as e:
+            print(f"Error processing purchase: {e}")
+
+        
+
      
     def delete_product(self, product_name):
         """Delete a product from the database by product_name."""
         if self.conn is None:
             print("No database connection.")
-            return
+            return 
         try:
             cur = self.conn.cursor()
             cur.execute("DELETE FROM products WHERE product_name = %s", (product_name,))
